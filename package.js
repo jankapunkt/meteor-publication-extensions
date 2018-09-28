@@ -2,11 +2,11 @@
 
 Package.describe({
   name: 'jkuester:publication-extensions',
-  version: '0.1.0',
+  version: '0.2.0',
   // Brief, one-line summary of the package.
   summary: 'Pause or stop publications, set timeouts, set maximum times of publication runs.',
   // URL to the Git repository containing the source code for this package.
-  git: '',
+  git: 'https://github.com/jankapunkt/meteor-publication-extensions.git',
   // By default, Meteor will default to using README.md for documentation.
   // To avoid submitting documentation, set this field to null.
   documentation: 'README.md'

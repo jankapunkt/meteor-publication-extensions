@@ -9,70 +9,62 @@ const _status = {
   unpublished: 'unpublished'
 }
 
-function getPub (name) {
-  return _pubCache[name]
-}
-
-function isRegistered (name) {
-  return _ExtendedPublications.findOne({name})
+function update (name, status) {
+  return _ExtendedPublications.update({name}, {$set: {status}})
 }
 
 function register (name) {
-  return _ExtendedPublications.insert({name, status: _status.normal}) && name
+  if (!_ExtendedPublications.findOne({name})) {
+    return _ExtendedPublications.insert({name, status: _status.normal}) && name
+  }
+  return name
 }
 
-function wrap (func) {
+function wrap (func, name) {
   let lastArgs
-  return function wrappedPublication (...args) {
+  const wrappedPublication = function (...args) {
+    const status = _ExtendedPublications.findOne({name}).status
+    console.log(name, status, args)
     // throw error
-    if (this._status === _status.unpublished) {
-      throw new Meteor.Error('calledUnpublishedPublication', 'A publication is attempted to be called but it has already been unpublished.')
+    if (status === _status.unpublished) {
+      throw new Meteor.Error('calledUnpublishedPublication', `Publication [${name}]is attempted to be called but it has already been unpublished.`)
     }
     // return empty cursor
-    if (this._status === _status.stopped) {
+    if (status === _status.stopped) {
       this.ready()
       return
     }
     // return latest query
-    if (this._status === _status.paused) {
+    if (status === _status.paused) {
       return func.call(this, ...lastArgs)
     }
     lastArgs = args
     return func.call(this, ...args)
   }
+  wrappedPublication.status = _status.normal
+  return wrappedPublication
 }
 
 const originalPublish = Meteor.publish
 
 Meteor.publish = function publish (name, func) {
-  const wrappedFunc = wrap(func)
-  _pubCache[name] = wrappedFunc
-  if (isRegistered(name)) {
-
-  } else {
-    register(name)
-    return originalPublish.call(this, name, wrappedFunc)
-  }
+  return originalPublish.call(this, register(name), wrap(func, name))
 }
 
 Meteor.publish.prototype = originalPublish.prototype
 
 Meteor.stopPublication = function stopPublication (name) {
-  const pub = getPub(name)
-  pub._status = _status.stopped
+  return update(name, _status.stopped)
 }
 
 Meteor.pausePublication = function pausePublication (name) {
-  const pub = getPub(name)
-  pub._status = _status.paused
+  return update(name, _status.paused)
 }
 
 Meteor.resumePublication = function resumePublication (name) {
-  const pub = getPub(name)
-  pub._status = _status.normal
+  return update(name, _status.normal)
 }
 
 Meteor.unpublish = function resumePublication (name) {
-  const pub = getPub(name)
-  pub._status = _status.unpublished
+  return update(name, _status.unpublished)
 }
